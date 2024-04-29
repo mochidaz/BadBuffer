@@ -4,8 +4,9 @@ Run Bad Apple on the linux framebuffer.
 
 ## Requirements
 
-- OpenCV (I'm going to ditch this later and use another imaging library)
 - PulseAudio
+
+This program reads the Bad Apple pixmaps from resources/badapple.bin, so you need that file.
 
 ## Building
 
