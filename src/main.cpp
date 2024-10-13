@@ -5,9 +5,13 @@
 #include <unistd.h>
 #include <vector>
 #include <thread>
+#include <chrono>
 
 #include "audio.cpp"
 #include "pixmap.cpp"
+
+const int TARGET_FPS = 30;
+const std::chrono::duration<double, std::milli> FRAME_DURATION(1000.0 / TARGET_FPS);
 
 void draw_to_framebuffer(const std::vector<bxpl::Pixmap> &images, struct fb_var_screeninfo vinfo, struct fb_fix_screeninfo finfo, char *fbp) {
     int center_x = vinfo.xres / 2;
@@ -17,6 +21,8 @@ void draw_to_framebuffer(const std::vector<bxpl::Pixmap> &images, struct fb_var_
     int image_start_y = center_y - (images[0].h / 2);
 
     for (int image = 0; image < images.size(); image++) {
+        auto frame_start_time = std::chrono::steady_clock::now();
+
         for (int y = 0; y < images[0].h; ++y) {
             for (int x = 0; x < images[0].w; ++x) {
                 int drawX = image_start_x + x;
@@ -35,13 +41,17 @@ void draw_to_framebuffer(const std::vector<bxpl::Pixmap> &images, struct fb_var_
                 }
             }
         }
-        usleep(10000000 / 560);
+
+        auto frame_end_time = std::chrono::steady_clock::now();
+        std::chrono::duration<double, std::milli> render_time = frame_end_time - frame_start_time;
+
+        if (render_time < FRAME_DURATION) {
+            std::this_thread::sleep_for(FRAME_DURATION - render_time);
+        }
     }
 }
 
 int main(int argc, char **argv) {
-    int count = 0;
-
     std::cout << "Reading bad apple pixmaps..." << std::endl;
 
     std::vector<bxpl::Pixmap> pixmaps = bxpl::read_bin("./resources/badapple.bin");
@@ -82,9 +92,11 @@ int main(int argc, char **argv) {
 
     draw_to_framebuffer(pixmaps, vinfo, finfo, fbp);
 
-    audio_thread.native_handle();
+    audio_thread.join();
 
     munmap(fbp, screensize);
 
     close(fbfd);
+
+    return 0;
 }
